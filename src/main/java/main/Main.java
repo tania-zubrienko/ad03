@@ -15,14 +15,15 @@ import org.hibernate.query.Query;
 import tarea03.*;
 
 public class Main {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws NumberFormatException, IOException {
 		
 		//EJERCICIO 1
 		SessionFactory sesion = Conexion.getSessionFactory();		
 		Session session = sesion.openSession();	
 		Transaction t = session.beginTransaction();
-		/*
+		
 		//Actualizamos Centros
+		System.out.println("\n------------------------EJERCICIO 1\n");
 		System.out.println("a)\n");
 		
 		Query<Centros> qCentros = session.createQuery("from Centros", Centros.class);
@@ -77,22 +78,20 @@ public class Main {
 			
 		}
 		
-		t.commit();
 		
 		
 		//EJERCICIO 2
+		System.out.println("\n------------------------EJERCICIO 2");
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-		try {
 			
 			int evaluacion;
 			int numAlumno;
-			do {
-				System.out.print("\nCod Evaluación (1 y 3, 0 para terminar):  ");
-				evaluacion = Integer.parseInt(br.readLine());
+			System.out.print("\nCod Evaluación (1 y 3, 0 para terminar):  ");
+			evaluacion = Integer.parseInt(br.readLine());
+			
+			while(evaluacion!=0) {	
 				
-				if(evaluacion==0) {break;}
-				if(evaluacion!=1 && evaluacion!=2 && evaluacion!=3) {
-					
+				if(evaluacion!=1 && evaluacion!=2 && evaluacion!=3 && evaluacion!=0) {					
 					System.out.println("Numero de evaluacion incorrecto");
 					
 				}else {
@@ -129,20 +128,114 @@ public class Main {
 					}//comprobacion codigo alumno
 				}//comprobacion de evaluacion
 				
-			}while(evaluacion!=0);
+				System.out.print("\nCod Evaluación (DOWN) (1 y 3, 0 para terminar):  ");
+				evaluacion = Integer.parseInt(br.readLine());
+			}
+		
 			
-		} catch (NumberFormatException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	*/	
-		
-		
 		//EJERCICIO 3
+		System.out.println("\n------------------------EJERCICIO 3");
+		Query<Cursos> queryCursos = session.createQuery("from Cursos", Cursos.class);
+		List<Cursos> listaCursos2 = queryCursos.list();
+		Iterator<Cursos> iterCursos2 = listaCursos2.iterator();
+		
+		while(iterCursos2.hasNext()) {
+
+			Cursos c = iterCursos2.next();
+			
+			BigInteger codCurso = c.getCodCurso();
+			String nombre = c.getDenominacion();
+			System.out.printf("\n \nCOD-CURSO: %s NOMBRE CURSO: %s\n", codCurso, nombre);
+			
+			Object[] centro = Ejercicio3.getInfoCentro(session, codCurso);
+			System.out.printf("NOMBRE CENTRO: %s, LOCALIDAD: %s \n", centro[0], centro[1]);
+			
+			System.out.println("========================================================================");
+			System.out.print("NUM_ALUMNO   NOMBRE                      EV(1) EV(2) EV(3) NOTA_MEDIA");
+			
+			Set<Alumnos> alumnos = c.getAlumnoses();
+			for(Alumnos a : alumnos) {
+				
+				System.out.print("\n     " + a.getNumAlumno() + "    " + Main.llenarEspacios(a.getNombre(), 30));
+				List<Object[]> notas = Ejercicio3.getEvalulacionesAlumno(session, a.getNumAlumno());
+				
+				for(Object [] nota : notas) {
+					for(int i=0; i<nota.length; i++) {
+						
+						if(nota[i]!="0") {
+							System.out.print(Main.llenarEspacios(String.valueOf(nota[i]).substring(0, 3), 6));
+						} else {
+							System.out.print(Main.llenarEspacios("0", 6));
+						}
+					}
+				}
+				
+				System.out.print(a.getNotaMedia());
+			}
+			System.out.print("\n Alumno con más nota media: " + Ejercicio3.alumnoMaxNota(session, codCurso));
+		}
+		
+		
+		//EJERCICIO 4
+		System.out.println("\n------------------------EJERCICIO 4\n");
+		
+		List<Centros> lCentros= session.createQuery("from Centros", Centros.class).list();
+		lCentros.forEach(centro ->{
+			
+			System.out.printf("\nCOD-CENTRO: %s NOMBRE CENTRO: %s LOCALIDAD: %s \n", centro.getCodCentro(), centro.getNombre(), centro.getLocalidad());
+			
+			Set<Cursos> cursos = centro.getCursoses();
+			if(cursos.size()<=0) {
+				System.out.println("<EL CENTRO NO TIENE CURSOS>");
+			}
+			cursos.forEach(curso ->{
+				System.out.printf("COD-CURSO: %s DENOMINACIÓN: %s \n",curso.getCodCurso(), curso.getDenominacion());			
+				System.out.print("COD-ASIG   NOMBRE               NOMBRE DEPART        NUM-ALUMNOS MED-EVA1 MED-EVA2 MED-EVA3 MEDIAASIG\r\n"
+						         + "--------   -------------------- -------------------- ----------- -------- -------- -------- ---------");
+				
+				Set<Asignaturas> asignaturas = curso.getAsignaturases();
+				asignaturas.forEach(asig -> {
+					System.out.print("\n       " + asig.getCodAsig() + "   " + Main.llenarEspacios(asig.getNombre(), 20) 
+									+ "  " + Main.llenarEspacios(asig.getDepartamentos().getNombreDepar(), 20) + "     "
+									+ Ejercicio4.getNumAlumnos(session, asig.getCodAsig()) + "        ");
+					
+					for(int i=1; i<=3; i++) {
+						String nota = String.valueOf(Ejercicio4.getMediaEvaluacion(session, asig.getCodAsig(), i));
+						if(nota=="null") {
+							System.out.print(Main.llenarEspacios("0", 6));
+						}else {
+							System.out.print(Main.llenarEspacios(nota.substring(0,3), 10));
+						}
+					}
+					System.out.print(String.valueOf(Ejercicio4.getMediaAsignatura(session, asig.getCodAsig())).substring(0,3));
+				});
+				
+				
+				
+				/* 
+				BigInteger codigoCurso = curso.getCodCurso();
+				List<Cursos> lista = Ejercicio4.getCursosCentro(session, codigoCurso);
+				for(Cursos c: lista) {
+					System.out.print(c.getDenominacion() + "    ");
+				}*/
+				System.out.println();
+				System.out.println();
+			});
+		});
+		
+		
+		
 		
 	}
 	
-	
-	
+	public static String llenarEspacios(String str, int longitud) {
+		StringBuilder resultado = new StringBuilder();
+		resultado.append(str);
+		for(int i=0; i<longitud-str.length(); i++) {
+			resultado.append(" ");
+		}
+		
+		return resultado.toString();
+		
+	}
 }
